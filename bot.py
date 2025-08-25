@@ -9,7 +9,6 @@ from io import BytesIO
 
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = "8465873812:AAGvjy0WzCEzFx2g8S_xbVS9NaA6tupF_lM" 
-)
 logger = logging.getLogger(__name__)
 
 async def send_photo_to_group(photo_content: bytes, guest_name: str, bot: Bot):
