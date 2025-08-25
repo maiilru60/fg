@@ -9,6 +9,12 @@ from io import BytesIO
 
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = "8465873812:AAGvjy0WzCEzFx2g8S_xbVS9NaA6tupF_lM" 
+GROUP_ID = -1003068558796
+# -----------------
+
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
 logger = logging.getLogger(__name__)
 
 async def send_photo_to_group(photo_content: bytes, guest_name: str, bot: Bot):
@@ -48,24 +54,40 @@ async def handle_upload(request: web.Request):
 
         return web.json_response({'status': 'ok', 'message': 'File received and is being processed.'})
 
+    except Exception as e:
+        logger.error(f"Ошибка в веб-хендлере /send-photo: {e}", exc_info=True)
+        return web.json_response({'status': 'error', 'message': 'Internal server error'}, status=500)
+
+async def main_async():
     """Инициализирует бота и запускает веб-сервер."""
     bot = Bot(token=BOT_TOKEN)
     
     app = web.Application()
     app['bot'] = bot
-    # Настройка CORS, чтобы браузер мог отправлять запросы с любого домена
     cors = aiohttp_cors.setup(app, defaults={
         "*": aiohttp_cors.ResourceOptions(
+            allow_credentials=True,
+            expose_headers="*",
+            allow_headers="*",
+            allow_methods="*",
+        )
+    })
+    
+    upload_route = app.router.add_post('/send-photo', handle_upload)
     cors.add(upload_route)
 
     runner = web.AppRunner(app)
     await runner.setup()
-    # Render предоставит порт через переменную окружения PORT
     port = int(os.environ.get("PORT", 8080))
     site = web.TCPSite(runner, '0.0.0.0', port)
     logger.info(f"Запуск веб-сервера на http://0.0.0.0:{port}")
     await site.start()
     logger.info("Сервер-бот запущен и готов принимать файлы.")
-    # Бесконечное ожидание, чтобы скрипт не завершился
     await asyncio.Event().wait()
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main_async())
+    except KeyboardInterrupt:
+        logger.info("Сервер остановлен.")
 
