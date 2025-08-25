@@ -9,7 +9,7 @@ from io import BytesIO
 
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = "8465873812:AAGvjy0WzCEzFx2g8S_xbVS9NaA6tupF_lM" 
-GROUP_ID = -1003068558796
+GROUP_ID = -1002906760960
 # -----------------
 
 logging.basicConfig(
