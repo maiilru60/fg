@@ -8,21 +8,19 @@ import aiohttp_cors
 from io import BytesIO
 
 # --- НАСТРОЙКИ ---
-BOT_TOKEN = "8465873812:AAGvjy0WzCEzFx2g8S_xbVS9NaA6tupF_lM" 
-)
+BOT_TOKEN = "8465873812:AAGvjy0WzCEzFx2g8S_xbVS9NaA6tupF_lM"  # Убрали лишнюю скобку
+GROUP_ID = -1001234567890  # ID вашей группы Telegram
+UPLOAD_ROUTE = "/upload"  # путь для POST-запросов
+
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 async def send_photo_to_group(photo_content: bytes, guest_name: str, bot: Bot):
     """Отправляет одну фотографию в группу."""
     try:
         caption = f"📸 Новая фотография от гостя: {guest_name}"
         photo_file = InputFile(BytesIO(photo_content), filename=f"{guest_name}.jpg")
-        
-        await bot.send_photo(
-            chat_id=GROUP_ID,
-            photo=photo_file,
-            caption=caption
-        )
+        await bot.send_photo(chat_id=GROUP_ID, photo=photo_file, caption=caption)
         logger.info(f"Фотография от '{guest_name}' успешно отправлена в группу {GROUP_ID}.")
     except TelegramError as e:
         logger.error(f"Ошибка отправки фото в Telegram от {guest_name}: {e}", exc_info=True)
@@ -48,24 +46,32 @@ async def handle_upload(request: web.Request):
         asyncio.create_task(send_photo_to_group(photo_content, guest_name, bot))
 
         return web.json_response({'status': 'ok', 'message': 'File received and is being processed.'})
+    except Exception as e:
+        logger.error(f"Ошибка обработки запроса: {e}", exc_info=True)
+        return web.json_response({'status': 'error', 'message': 'Internal server error'}, status=500)
 
+async def main():
     """Инициализирует бота и запускает веб-сервер."""
     bot = Bot(token=BOT_TOKEN)
-    
     app = web.Application()
     app['bot'] = bot
-    # Настройка CORS, чтобы браузер мог отправлять запросы с любого домена
+
+    # Настройка маршрута и CORS
+    upload_route = app.router.add_post(UPLOAD_ROUTE, handle_upload)
     cors = aiohttp_cors.setup(app, defaults={
-        "*": aiohttp_cors.ResourceOptions(
+        "*": aiohttp_cors.ResourceOptions(allow_credentials=True, expose_headers="*", allow_headers="*")
+    })
     cors.add(upload_route)
 
     runner = web.AppRunner(app)
     await runner.setup()
-    # Render предоставит порт через переменную окружения PORT
     port = int(os.environ.get("PORT", 8080))
     site = web.TCPSite(runner, '0.0.0.0', port)
     logger.info(f"Запуск веб-сервера на http://0.0.0.0:{port}")
     await site.start()
+
     logger.info("Сервер-бот запущен и готов принимать файлы.")
-    # Бесконечное ожидание, чтобы скрипт не завершился
-    await asyncio.Event().wait()
+    await asyncio.Event().wait()  # Бесконечное ожидание
+
+if __name__ == "__main__":
+    asyncio.run(main())
